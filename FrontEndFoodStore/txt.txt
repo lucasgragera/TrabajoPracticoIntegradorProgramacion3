@@ -1,0 +1,504 @@
+
+    $(document).ready(function () {
+        mod_patientNewCaseModal.$hdnCasesToCreate = $('#hdnCasesToCreate');
+        mod_patientNewCaseModal.modalCloseCallback = () => { mod_intakeReferral.caseEnabledProgramDrugs = undefined };
+    });
+
+    const mod_intakeReferral = (function () {
+        let _selectedDrugProgramInfo, _programFillingPharmacies, _clickedSubmitButton;
+        let _selectedDrugs = []; // array of armadaRx.db.vDrug objects
+        let _patientId = "0";
+        let _caseEnabledProgramIds = "78";
+        let _faxVendorJobId = "";
+        let _saveInProgress = false;
+        let _caseEnabledProgramDrugs;
+
+        /**
+         * Checks the following before submitting:
+         * - Input validation passes
+         * - Case enabled drugs (find existing open case or create a new one)
+         */
+        function canSaveReferral(button, validationFn) {
+            if (!_saveInProgress) {
+                // Prevent repeat clicks of the save button
+                _saveInProgress = true;
+
+                // A1-11128 BMS - Create Case Logic
+                // Intercept the submit button click
+                _clickedSubmitButton = button;
+                let returnVal = false;
+
+                // Execute the original validation function
+                if (validationFn(button)) {
+                    // If validation passes, check whether we need to create a case
+
+                    // If _caseEnabledProgramDrugs is undefined, we haven't run the check yet.
+                    if (typeof _caseEnabledProgramDrugs === typeof undefined) {
+                        _caseEnabledProgramDrugs = [];
+
+                        let caseEnabledPrograms = _caseEnabledProgramIds.split(',').map(id => +id);
+
+                        // See if any of the selected drugs are in a case enabled program
+                        _selectedDrugProgramInfo && _selectedDrugProgramInfo.forEach(x => {
+                            if (caseEnabledPrograms.indexOf(x.ProgramID) > -1) {
+                                _caseEnabledProgramDrugs.push({
+                                    drug: x.DrugName,
+                                    programId: x.ProgramID
+                                });
+                            }
+                        });
+
+                        // Only run case logic if we actually have case enabled items to deal with
+                        if (_caseEnabledProgramDrugs.length > 0) {
+                            checkNextCaseDrug();
+
+                            // return false
+                        }
+
+                        // Otherwise, just let things flow through normally
+                        else {
+                            returnVal = true;
+                        }
+                    } else {
+                        // If _caseEnabledProgramDrugs is an empty array, we've checked them and are
+                        // ready to allow the postback to happen.
+                        if (_caseEnabledProgramDrugs.length === 0) {
+                            var btnBack = document.getElementById("MainContent_cphMain_ctl00_btnBackToReferral");
+                            btnBack && (btnBack.disabled = true);
+
+                            returnVal = true;
+                        }
+                        // This shouldn't happen
+                        else {
+                            // but if it does we prevent the postback with a modicum of grace.
+                            alert('Oops! Something went wrong!');
+                            // return false
+                        }
+                    }
+                }
+
+                if (returnVal) {
+                    _clickedSubmitButton.value = "Submitting";
+                } else {
+                    _saveInProgress = false;
+                }
+
+                return returnVal;
+            }
+
+            return false;
+        }
+
+        /**
+         * Checks for an open case for the next selected case enabled drug
+         */
+        function checkNextCaseDrug() {
+            let nextFn = _caseEnabledProgramDrugs.length > 1
+                // If we start with more than a single item in _caseEnabledProgramDrugs we will recurse
+                ? checkNextCaseDrug
+                // BASE CASE: If this is the last drug to check, trigger the submit button afterward
+                : () => _clickedSubmitButton.click();
+
+            // If _caseEnabledProgramDrugs is not empty, keep checking.
+            if (_caseEnabledProgramDrugs.length > 0) {
+                let caseDrug = _caseEnabledProgramDrugs.pop();
+
+                // If this is a new patient, we don't need to check for existing cases
+                if (_patientId === 0) {
+                    openNewCaseModal(caseDrug, nextFn);
+                } else {
+                    const annexusJobIdPrefix = 'Annexus-';
+                    let apid = _faxVendorJobId.startsWith(annexusJobIdPrefix) ? _faxVendorJobId.substr(annexusJobIdPrefix.length) : ''
+
+                    // Check for open case matching "patient/drug (not NDC)/Program"
+                    $.ajax({
+                        async: false,
+                        url: `/Handlers/PatientCase/GetOpenCase.ashx?patientid=${_patientId}&drugname=${caseDrug.drug}&programid=${caseDrug.programId}&apid=${apid}`,
+                        type: 'GET',
+                        success: function ({ success, errors, d }) {
+                            if (success) {
+                                if (d === null) {
+                                    // No open case exists, display modal to create a new one.
+                                    openNewCaseModal(caseDrug, nextFn);
+                                } else {
+                                    //console.log(`Open case found for ${caseDrug.drug}`);
+                                    nextFn();
+                                }
+                            } else {
+                                alert(`An error occurred getting an open case for ${caseDrug.drug}.`);
+                                console.error(errors);
+                            }
+                        }
+                    });
+                }
+            }
+            // If/when _caseEnabledProgramDrugs is empty, we invoke nextFn one more time to submit the postback for real
+            else {
+                nextFn();
+            }
+        }
+
+        /**
+         * Opens the New Case modal
+         */
+        function openNewCaseModal(caseDrug, modalCallback) {
+            if (typeof mod_patientNewCaseModal !== typeof undefined) {
+                mod_patientNewCaseModal.openModal(caseDrug.drug, caseDrug.programId, modalCallback);
+            } else {
+                let err = `Unable to open New Case modal for ${caseDrug.drug}`;
+                alert(`ERROR: ${err}`);
+                console.error(`ERROR: mod_patientNewCaseModal is undefined. ${err}`);
+            }
+        }
+
+        /**
+         * Loads the program info for the selected drugs
+         */
+        function loadDrugProgramInfo() {
+            let memberId = $('#MainContent_cphMain_ctl00_hdnReferringPharmacyId').val();
+            if (memberId == '') {
+                if ($('#MainContent_cphMain_ctl00_ucPharmacyInfo_ddlMember').val() != '') {
+                    memberId = $('#MainContent_cphMain_ctl00_ucPharmacyInfo_ddlMember').val();
+                } else {
+                    memberId = 0;
+                }
+            }
+
+            var params = {
+                'ndclist': _selectedDrugs.map(drug => drug.NDC),
+                /* memberId should be based on if this is a new referral (use ucPharmacyInfo) or an existing referral edit (use hidden variable with aspnrx.referring pharmacy ID) */
+                'memberId': memberId,
+                'faxId': $('#MainContent_cphMain_ctl00_hdnFaxId').val()
+            };
+
+            isAjaxLoading(true);
+            $.ajax({
+                async: false,
+                url: '/services/IntakeReferralSVC.asmx/GetProgram',
+                data: JSON.stringify(params),
+                dataType: 'json',
+                type: 'POST',
+                contentType: 'application/json; charset=utf-8'
+            }).done(function ({ d: { DrugProgramInfo, ProgramFillingPharmacies } }) {
+                _selectedDrugProgramInfo = DrugProgramInfo;
+                _programFillingPharmacies = ProgramFillingPharmacies
+            }).always(function () {
+                isAjaxLoading(false);
+            });
+        }
+
+        return {
+            get selectedDrugs() { return _selectedDrugs },
+            get drugProgramInfo() { return _selectedDrugProgramInfo },
+            get programFillingPharmacies() { return _programFillingPharmacies },
+            get $clickedSubmitButton() { return _$clickedSubmitButton },
+            set $clickedSubmitButton($elem) { _$clickedSubmitButton = $elem },
+            get caseEnabledProgramDrugs() { return _caseEnabledProgramDrugs },
+            set caseEnabledProgramDrugs(val) { _caseEnabledProgramDrugs = val },
+            canSaveReferral,
+            loadDrugProgramInfo
+        }
+    }());
+
+    var _ajaxLoadingCount = 0;
+    function isAjaxLoading(value) {
+        if (value) {
+            _ajaxLoadingCount++;
+            $('#spnLoading').show();
+        }
+        else {
+            _ajaxLoadingCount--;
+            if (_ajaxLoadingCount <= 0) {
+                $('#spnLoading').hide();
+                _ajaxLoadingCount = 0;
+            }
+        }
+
+        console.debug('isAjaxLoading(' + value + ') resulted in count: ' + _ajaxLoadingCount);
+    }
+
+    function checkIfDexcomPatient() {
+        var params = {
+            "PatientFirstName": $('#MainContent_cphMain_ctl00_txtFirstName').val()
+            , "PatientLastName": $('#MainContent_cphMain_ctl00_txtLastName').val()
+            , "PatientDOB": $('#MainContent_cphMain_ctl00_txtDob').val()
+            , "PatientZIP": $('#MainContent_cphMain_ctl00_txtZip').val()
+            , "PrescriberFirst": $('#MainContent_cphMain_ctl00_ucPrescriber_txtDoctorFn').val()
+            , "PrescriberLast": $('#MainContent_cphMain_ctl00_ucPrescriber_txtDoctorLn').val()
+            , "PrescriberNPI": $('#MainContent_cphMain_ctl00_ucPrescriber_txtDoctorNpi').val()
+        };
+
+        isAjaxLoading(true);
+        $.ajax({
+            async: true,
+            url: "/services/IntakeReferralSVC.asmx/CheckIfDexcomPatient",
+            data: JSON.stringify(params),
+            dataType: "json",
+            type: "POST",
+            contentType: "application/json; charset=utf-8"
+        }).done(function (data) {
+            if (data.d) {
+                $('.alertDexcomDocument').show();
+            }
+        }).fail(function (jq, status, message) {
+
+        }).always(function () {
+            isAjaxLoading(false);
+        });
+    }
+
+    function editSSN() {
+        var ssnElem = $('#MainContent_cphMain_ctl00_txtLastFourSSN');
+        ssnElem.attr("disabled", false)
+        ssnElem.mask('999-99-9999');
+    }
+
+    function blurSSN() {
+        var ssnElem = $('#MainContent_cphMain_ctl00_txtLastFourSSN');
+        var ssnVal = ssnElem.val();
+        var regexDigit = /\d+/; // Regexp to check for any digits
+
+        // Make sure that the entered SSN is either all 9 digits, or only the last 4 digits.  All other variations should fail. 
+
+        // Define the first success scenario of only last 4 digits entered, and no other digits entered anywhere else.
+        if (ssnVal.substring(0, 6).match(regexDigit) == null && ssnVal.lastIndexOf("_") <= 7) {
+            // Success.  Pad with zeros at the beginning.
+            ssnElem.val("000-00-" + ssnVal.substring(ssnVal.length - 4, ssnVal.length));
+        }
+        else if (ssnVal.lastIndexOf("_") == -1) {
+            // Success.  Do nothing as this is a full SSN.
+        }
+        else {
+            alert("SSN must only be entered either as 9 digits, or the last 4 digits.");
+            ssnElem.val("");
+            ssnElem.attr("disabled", false);
+            return;
+        }
+
+        $('#MainContent_cphMain_ctl00_hiddenSSN').val(ssnVal);
+        ssnElem.attr("disabled", true)
+    }
+
+    $(document).ready(function () {
+
+        if ($("#hdnPatientId").val() > 0) {
+            $('#divDeliverTo').css("display", "block");
+        }
+
+        //A1-8676 (A1-8577 A1-8578)
+        var ddlTransferProgramFilterId = 'MainContent_cphMain_ctl00_ddlTransferProgramFilter';
+        var $ddlTransferProgramFilter = $(document.getElementById(ddlTransferProgramFilterId));
+        if ($ddlTransferProgramFilter.length > 0) {
+            if ($ddlTransferProgramFilter.prop('isLoaded') !== true) {
+                var bucketid = $ddlTransferProgramFilter.attr('bucketid');
+
+                isAjaxLoading(true);
+                $.ajax({
+                    url: "/services/IntakeReferralSVC.asmx/GetHubRxTransferProgramList",
+                    data: JSON.stringify({ bucketId: bucketid }),
+                    dataType: "json",
+                    type: "POST",
+                    contentType: "application/json; charset=utf-8"
+                }).done(function (data) {
+                    if (data.d) {
+                        if (data.d.isSuccess === true) {
+                            //console.log('isSuccess true:', data.d.data)
+                            var selectedProgramId = $ddlTransferProgramFilter.val();
+                            $ddlTransferProgramFilter.find("option[value!='']").remove();
+                            $.each(data.d.data, function (i) {
+                                var pm = data.d.data[i];
+                                var $opt = $('<option>', { value: pm.ProgramID, text: pm.ProgramName })
+                                var opt = $ddlTransferProgramFilter.append($opt);
+                                //console.log('opt', opt, $opt)
+                            })
+                            $ddlTransferProgramFilter.val(selectedProgramId)
+                            $ddlTransferProgramFilter.prop('isLoaded', true)
+                        }
+                        else {
+                            console.log('isSuccess false:', data.d.note)
+                        }
+                    }
+                    else {
+                        console.log('waring', data.d)
+                    }
+                }).fail(function (error) {
+                    console.error(error.responseText);
+                }).always(function () {
+                    isAjaxLoading(false);
+                });
+
+            }
+            else {
+                console.log('skip')
+            }
+        }
+        
+        $("#toggleSSN").click(function () {
+            var toggleElem = $('#toggleSSN');
+            $("#txtPassword").val("");
+            $("#getSSNResultBar").html("");
+
+            if (toggleElem.hasClass('fa-eye-slash')) {
+
+                $("#divAuthInfo").modal();
+            }
+            else {
+                toggleElem.addClass('fa-eye-slash');
+                toggleElem.removeClass('fa-eye');
+                ssnElem.mask('XXX-XX-9999');
+                setTimeout(function () {
+                    ssnElem.val("XXX-XX-" + ssnVal.substring(ssnVal.length - 4, ssnVal.length));
+                }, 100)
+            };
+        });
+         
+
+        $("#editSSN").click(function () {
+            editSSN();
+        });
+
+        $('#MainContent_cphMain_ctl00_txtLastFourSSN').blur(function () {
+            blurSSN();
+        });
+
+        $('#MainContent_cphMain_ctl00_txtEmail').hover(function () {
+            this.readOnly = false;
+        });
+
+        $('#MainContent_cphMain_ctl00_txtEmail').blur(function () {
+            this.readOnly = true;
+        });
+
+        $("#btnGetSSN").click(function () {
+            common_getPatientSSN(0, "TestRigor-Shreya", $("#txtPassword").val(), handleSSNResult);
+        });
+        //A1-12229
+        PreFillMetaData();
+    });
+
+    function handleSSNResult(getSSNResult) {
+        var toggleElem = $('#toggleSSN');
+
+        if (getSSNResult.success == true) {
+            toggleElem.removeClass('fa-eye-slash');
+            toggleElem.addClass('fa-eye');
+
+            if (getSSNResult.data.length == 4) {
+                $('#MainContent_cphMain_ctl00_txtLastFourSSN').val("00000" + getSSNResult.data);
+                $('#MainContent_cphMain_ctl00_txtLastFourSSN').mask('999-99-9999');
+                $('#MainContent_cphMain_ctl00_hiddenSSN').val($('#MainContent_cphMain_ctl00_txtLastFourSSN').val());
+            }
+            else if (getSSNResult.data.length >= 9) {
+                $('#MainContent_cphMain_ctl00_txtLastFourSSN').val(getSSNResult.data);
+                $('#MainContent_cphMain_ctl00_txtLastFourSSN').mask('999-99-9999');
+                $('#MainContent_cphMain_ctl00_hiddenSSN').val($('#MainContent_cphMain_ctl00_txtLastFourSSN').val());
+            }
+            else {
+                alert("No full 9-digit SSN found for the chosen patient.");
+
+                toggleElem.removeClass('fa-eye');
+                toggleElem.addClass('fa-eye-slash');
+            }
+
+            $("#divAuthInfo").modal('hide');
+        }
+        else {
+            $("#getSSNResultBar").html(getSSNResult.statusmessage);
+
+            toggleElem.removeClass('fa-eye');
+            toggleElem.addClass('fa-eye-slash');
+        }
+    }
+    faxMetaData = {};
+    //ranDrAutoSearch = false;
+    gotDrugFromMetaData = true;
+    async function PreFillMetaData() {
+        if (faxMetaData.fields === null || faxMetaData.fields === undefined || faxMetaData.fields.field === undefined) { }
+        else {
+            let myNDC = "";
+            for (var i = 0; i < faxMetaData.fields.field.length; i++) {
+                var field = faxMetaData.fields.field[i];
+                switch (field.fieldName.toLowerCase()) {
+                    case "patient first name":
+                        checkPrePopField("firstname", field.fieldValue); break;
+                    case "patient last name":
+                        checkPrePopField("lastname", field.fieldValue); break;
+                    case "patient address":
+                        checkPrePopField("address", field.fieldValue); break;
+                    case "patient zip":
+                        checkPrePopField("zip", field.fieldValue); break;
+                    case "patient city":
+                        checkPrePopField("city", field.fieldValue); break;
+                    case "patient state":
+                        checkPrePopField("state", field.fieldValue); break;
+                    case "patient phone":
+                        checkPrePopField("homephone", field.fieldValue.replace(/^\s*1[\s\-\.]?/, '')); break;
+                    case "patient cell phone":
+                        checkPrePopField("cellphone", field.fieldValue.replace(/^\s*1[\s\-\.]?/, '')); break;
+                    case "patient date of birth":
+                        checkPrePopField("dob", field.fieldValue); break;
+                    case "patient email":
+                        checkPrePopField("email", field.fieldValue); break;
+                    case "patient gender":
+                        checkPrePopField("gender", field.fieldValue.length > 1 ? field.fieldValue.charAt(0) : field.fieldValue); break;
+                    //case "prescriber first name":
+                    //    checkPrePopField("prescribersearchfirstname", field.fieldValue); break;
+                    //case "prescriber last name":
+                    //    checkPrePopField("prescribersearchlastname", field.fieldValue); break;
+                    case "npi":
+                        checkPrePopField("prescribersearchnpi", field.fieldValue); break;
+                    //case "prescriber phone":
+                    //    checkPrePopField("prescribersearchphone", field.fieldValue.replace(/^\s*1[\s\-\.]?/, '')); break;
+                    //case "prescriber fax":
+                    //    checkPrePopField("prescribersearchfax", field.fieldValue.replace(/^\s*1[\s\-\.]?/, '')); break;
+                    //case "prescriber dea number":
+                    //    checkPrePopField("prescribersearchdea", field.fieldValue); break;
+                    case "selected ndcs":
+                        if (field.fieldValue.length > 3) { myNDC = field.fieldValue; gotDrugFromMetaData = false; }
+                        break;
+                }
+            }
+            //for existing patient, if the NPI matches a previous dr, select it
+            //if not, prefill search box with drugname OR program name?
+            //for new patient, do a search to display results
+            //if (!ranDrAutoSearch) { searchprescribers(); ranDrAutoSearch = true; }
+            //if we have some NDCs, get the info and off we go
+            if (!gotDrugFromMetaData) {
+                var ndcArray = JSON.parse(myNDC);
+                var medIndex = -1;
+                if (Array.isArray(ndcArray)) {
+                    for (var i = 0; i < ndcArray.length; i++) {
+                        var data = await getDrugByNDC(ndcArray[i].trim());
+                        if (data != null && data.d != null) {
+                            medIndex++;
+                            //MainContent_ctl01_rptrOtherMeds_txtMedication_0, this is needed because we're pretending to open the med search modal
+                            var medTarget = `MainContent_cphMain_ctl00_rptrOtherMeds_txtMedication_${medIndex}`
+                            $("#MainContent_cphMain_ctl00_hdnTargetMedicationField").val(medTarget);
+                            if (!$(`#${medTarget}`).is(":visible")) {
+                                addTableRow();
+                            }
+                            DrugSelectedDisplayDetails(data);
+                        }
+                    }
+                } else {
+                    var data = await getDrugByNDC(myNDC);
+                    if (data != null && data.d != null) {
+                        medIndex++;
+                        var medTarget = `MainContent_cphMain_ctl00_rptrOtherMeds_txtMedication_${medIndex}`
+                        $("#MainContent_cphMain_ctl00_hdnTargetMedicationField").val(medTarget);
+                        if (!$(`#${medTarget}`).is(":visible")) {
+                            addTableRow();
+                        }
+                        DrugSelectedDisplayDetails(data);
+                    }
+                }
+                if (medIndex >= 0) {
+                    gotDrugFromMetaData = true;
+                }
+            }
+        }
+    }
+    function checkPrePopField(dataFieldName, fieldValue) {
+        if ($('input[data-field-name="' + dataFieldName + '"]').length > 0 && $('input[data-field-name="' + dataFieldName + '"]').val() == "") { $('input[data-field-name="' + dataFieldName + '"]').val(fieldValue) }
+        else if ($('select[data-field-name="' + dataFieldName + '"]').length > 0 && $('select[data-field-name="' + dataFieldName + '"]').val() == "") { $('select[data-field-name="' + dataFieldName + '"]').val(fieldValue) }
+    }

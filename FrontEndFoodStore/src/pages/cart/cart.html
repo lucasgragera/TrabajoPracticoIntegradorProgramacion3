@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tu Carrito - Food Store</title>
+</head>
+
+<body>
+    <div class="cart-container">
+        <nav>
+            <a href="/src/pages/client/home/home.html">⬅ Volver al Catálogo</a>
+        </nav>
+
+        <div class="brand-title">🍔 Food Store</div>
+        <h1>Tu Carrito</h1>
+        <h3>Resumen de Compra:</h3>
+
+        <div id="mensaje-vacio" style="display: none;">
+            🛒 Tu carrito está vacío. ¡Agrega algunos productos desde el catálogo!
+        </div>
+
+        <div id="lista-carrito"></div>
+
+        <div id="resumen-pedido"
+            style="background-color: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 25px; width: 100%; max-width: 350px; margin-left: auto; display: none;">
+        </div>
+
+        <div class="btn-wrapper" style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px;">
+            <button id="btn-vaciar"
+                style="display: none; padding: 10px 20px; background-color: #d32f2f; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Vaciar
+                Carrito</button>
+            <button id="btn-confirmar-compra"
+                style="display: none; padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Confirmar
+                Compra</button>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="./cart.ts"></script>
+</body>
+
+</html>

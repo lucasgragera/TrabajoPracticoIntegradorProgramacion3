@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Categorías - Admin Food Store</title>
+</head>
+
+<body>
+    <header>
+        <div class="brand-title">⚙️ Admin - Food Store</div>
+        <nav>
+            <a href="../home/home.html">⬅ Volver al Dashboard</a>
+        </nav>
+    </header>
+
+    <main class="admin-container">
+        <h2>📁 Gestión de Categorías</h2>
+
+        <div class="admin-form-container">
+            <h3 style="margin-top: 0; color: #2c3e50;">➕ Nueva Categoría</h3>
+            <form id="form-categoria" class="inline-form">
+                <input type="text" id="cat-nombre" placeholder="Nombre (ej: Pastas)" required>
+                <input type="text" id="cat-desc" placeholder="Descripción breve" required>
+                <button type="submit">Guardar Categoría</button>
+            </form>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Imagen</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-categorias">
+            </tbody>
+        </table>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="./categories.ts"></script>
+</body>
+
+</html>

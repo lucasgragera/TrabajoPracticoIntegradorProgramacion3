@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Pedidos - Food Store</title>
+</head>
+
+<body>
+    <div class="orders-container">
+        <nav>
+            <a href="../home/home.html">⬅ Volver al Catálogo</a>
+        </nav>
+
+        <div class="brand-title">🍔 Food Store</div>
+        <h2>Historial de Mis Pedidos</h2>
+
+        <div id="mensaje-vacio"
+            style="display: none; text-align: center; padding: 30px; background: #f9f9f9; border-radius: 8px;">
+            <h3 style="color: #666;">Aún no tienes pedidos registrados.</h3>
+            <p>¡Explora nuestro catálogo y haz tu primer pedido!</p>
+        </div>
+
+        <div id="lista-pedidos" class="orders-grid"></div>
+    </div>
+
+    <div id="modal-detalle" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div id="modal-body">
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../../../main.ts"></script>
+    <script type="module" src="./orders.ts"></script>
+</body>
+
+</html>

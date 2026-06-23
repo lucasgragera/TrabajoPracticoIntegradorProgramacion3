@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Productos - Admin Food Store</title>
+</head>
+
+<body>
+    <header>
+        <div class="brand-title">⚙️ Admin - Food Store</div>
+        <nav>
+            <a href="../home/home.html">⬅ Volver al Dashboard</a>
+        </nav>
+    </header>
+
+    <main class="admin-container">
+        <h2>🍔 Gestión de Productos</h2>
+
+        <div class="admin-form-container">
+            <h3 style="margin-top: 0; color: #2c3e50;">➕ Nuevo Producto</h3>
+            <form id="form-producto" class="inline-form">
+
+                <input type="text" id="prod-nombre" list="lista-sugerencias" placeholder="Nombre del producto" required>
+                <datalist id="lista-sugerencias"></datalist>
+
+                <input type="number" id="prod-precio" placeholder="Precio ($)" min="1" required>
+                <input type="number" id="prod-stock" placeholder="Stock" min="0" required>
+
+                <select id="prod-categoria" required>
+                    <option value="" disabled selected>Seleccionar Categoría...</option>
+                </select>
+
+                <button type="submit">Guardar Producto</button>
+            </form>
+        </div>
+
+        <div style="overflow-x: auto; width: 100%; margin-top: 20px;">
+            <table style="margin-top: 0;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Imagen</th>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Categoría</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Disponibilidad</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-productos">
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="./products.ts"></script>
+</body>
+
+</html>

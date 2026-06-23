@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Store - Admin Dashboard</title>
+</head>
+
+<body>
+    <header>
+        <div class="brand-title">⚙️ Panel de Administración</div>
+        <nav>
+            <a href="../../client/home/home.html">Ir a la Tienda</a>
+            <button id="logoutButton">Salir</button>
+        </nav>
+    </header>
+
+    <main class="admin-container">
+        <nav class="admin-nav">
+            <a href="../categories/categories.html">Gestión de Categorías</a>
+            <a href="../products/products.html">Gestión de Productos</a>
+            <a href="../orders/orders.html" id="link-gestion-pedidos">Gestión de Pedidos</a>
+        </nav>
+
+        <h2 style="margin-bottom: 5px; color: #ff5722;">📊 Resumen Rápido</h2>
+        <section class="dashboard-grid" style="margin-bottom: 40px;">
+            <div class="stat-card" style="border-left: 5px solid #00bfa5; text-align: left;">
+                <h3 style="font-size: 0.9em;">💰 Ingresos Totales</h3>
+                <p id="stat-ingresos" style="color: #00bfa5; font-size: 1.8em; margin-top: 5px;">$0</p>
+            </div>
+
+            <div class="stat-card" style="border-left: 5px solid #ffca28; text-align: left;">
+                <h3 style="font-size: 0.9em;">⏳ Pedidos Pendientes</h3>
+                <p id="stat-pendientes" style="color: #ffca28; font-size: 1.8em; margin-top: 5px;">0</p>
+            </div>
+
+            <div class="stat-card" style="border-left: 5px solid #2196f3; text-align: left;">
+                <h3 style="font-size: 0.9em;">👨‍🍳 En Preparación</h3>
+                <p id="stat-preparacion" style="color: #2196f3; font-size: 1.8em; margin-top: 5px;">0</p>
+            </div>
+
+            <div class="stat-card" style="border-left: 5px solid #4caf50; text-align: left;">
+                <h3 style="font-size: 0.9em;">✅ Completados</h3>
+                <p id="stat-completados" style="color: #4caf50; font-size: 1.8em; margin-top: 5px;">0</p>
+            </div>
+
+            <div class="stat-card" style="border-left: 5px solid #f44336; text-align: left;">
+                <h3 style="font-size: 0.9em;">❌ Cancelados</h3>
+                <p id="stat-cancelados" style="color: #f44336; font-size: 1.8em; margin-top: 5px;">0</p>
+            </div>
+        </section>
+
+        <h2>📦 Resumen de Catálogo</h2>
+        <section class="dashboard-grid">
+            <div class="stat-card">
+                <h3>Total Categorías</h3>
+                <p id="stat-categorias">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total Productos</h3>
+                <p id="stat-productos">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Productos Activos</h3>
+                <p id="stat-activos">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total Pedidos Históricos</h3>
+                <p id="stat-pedidos">0</p>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="./home.ts"></script>
+</body>
+
+</html>

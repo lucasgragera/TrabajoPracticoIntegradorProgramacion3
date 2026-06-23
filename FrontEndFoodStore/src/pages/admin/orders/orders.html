@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Pedidos - Admin Food Store</title>
+</head>
+
+<body>
+    <header>
+        <div class="brand-title">⚙️ Admin - Food Store</div>
+        <nav>
+            <a href="../home/home.html">⬅ Volver al Dashboard</a>
+        </nav>
+    </header>
+
+    <main class="admin-container">
+        <h2>📦 Gestión de Pedidos</h2>
+
+        <div class="filter-container">
+            <label for="filtro-estado">Filtrar por estado:</label>
+            <select id="filtro-estado">
+                <option value="TODOS">Todos los pedidos</option>
+                <option value="PENDIENTE">Pendientes ⏳</option>
+                <option value="CONFIRMADO">Confirmados 🍳</option>
+                <option value="TERMINADO">Terminados ✅</option>
+                <option value="CANCELADO">Cancelados ❌</option>
+            </select>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID y Fecha</th>
+                    <th>Cliente</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Estado Actual</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-pedidos">
+            </tbody>
+        </table>
+
+        <p id="mensaje-vacio"
+            style="display: none; color: #666; margin-top: 30px; text-align: center; font-size: 1.2em;">
+            No hay pedidos para mostrar.
+        </p>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="./orders.ts"></script>
+</body>
+
+</html>
